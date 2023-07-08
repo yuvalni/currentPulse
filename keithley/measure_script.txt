@@ -1,0 +1,19 @@
+smua.sense=smua.SENSE_REMOTE
+smua.source.func = smua.OUTPUT_DCAMPS
+smua.measure.filter.type = smua.FILTER_REPEAT_AVG
+smua.measure.filter.count={AVGnum}
+smua.measure.filter.enable = smua.FILTER_ON 
+I={meas_curr}
+smua.source.leveli = I
+smua.measure.nplc=5
+delay(0.1)
+smua.source.output = smua.OUTPUT_ON 
+delay(0.1)
+Iplus,Vplus = smua.measure.iv()
+--smua.source.output = smua.OUTPUT_OFF
+smua.source.leveli = -I
+--smua.source.output = smua.OUTPUT_ON 
+delay(0.1)
+Iminus,Vminus= smua.measure.iv()
+--Vminus = smua.measure.v()
+smua.source.output = smua.OUTPUT_OFF 
