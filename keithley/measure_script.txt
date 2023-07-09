@@ -17,3 +17,9 @@ delay(0.1)
 Iminus,Vminus= smua.measure.iv()
 --Vminus = smua.measure.v()
 smua.source.output = smua.OUTPUT_OFF 
+
+print(Iplus) 
+print(Vplus) 
+print(Iminus)
+print(Vminus)
+print((Vplus/Iplus+Vminus/Iminus)/2)

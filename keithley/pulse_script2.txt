@@ -1,0 +1,112 @@
+dataqueue.clear()
+errorqueue.clear()
+-- Define the sweep parameters	
+	I_ini={pulseMin};					-- Initial current, Ampers
+	I_fin={pulseMax}; 				-- Maximal current, Ampers
+	step=I_fin-I_ini;					-- Current step, Ampers
+	up_down=1;					-- 1 to create a triangular up-down IV loop, 0 to create a unidirectional curve
+	minus_val=0;					-- 1 to create a curve which first put positive current according the list and then negative values, 0 for positive only.
+	smu=smua					-- Chooses smu "a" channel
+	pulsed=1					-- 0 for regular sweep (current remains between steps), 1 for pulsed sweep where current is set to zero between steps
+	smu.measure.autozero = smu.AUTOZERO_ONCE	-- Ensures accuracy with minimal time wasting.
+	smu.nvbuffer1.clear() 				-- Clears old values from buffer
+smu.nvbuffer1.appendmode = 1			-- Appends each subsequent measurement to the buffer
+	    	smu.nvbuffer1.collecttimestamps = 1 		-- Saves in the buffer measurement time
+	    	smu.nvbuffer1.collectsourcevalues = 1		-- Saves in the buffer source values (signal values are also saved of course)
+
+		-- Creates the current list according to the given parameters
+		local points=1+(I_fin-I_ini)/step 			-- Curve points number for one direction
+		ilist={} 						-- The full current list
+		for l_j=1,points do
+			ilist[l_j]=I_ini+(l_j-1)*step			-- Creates the current list according to fiven parameters
+		end
+		if up_down==1 then
+ 		local ilist_size=table.getn(ilist)
+			for l_j=1,ilist_size do
+				ilist[ilist_size+l_j]=ilist[ilist_size-(l_j-1)]	-- Appends "down" direction if needed
+			end
+		end
+		if minus_val==1 then
+			local ilist_size=table.getn(ilist)
+			for l_j=1,ilist_size do
+				ilist[ilist_size+l_j]=-ilist[l_j]	-- Appends "minus" direction if needed
+			end
+		end
+	points=table.getn(ilist) 							-- Number of points in the sweep
+freq_num=1
+
+ for idx=1, freq_num do
+	tbm={tbm};					-- Time before measurement (from sweep activation)- Time that the current pulse is on, before measurement performing, Seconds. Note that the real time on is ton+NPLC*1
+	toff=100E-3;						-- Time that the current pulse is off, Seconds. If the "pulsed" parameter below is set to 0, the pulse is always on and the tof will just mean delay after measurement before next step.
+	NPLC_val={nplc}				-- Measurement integration time, in units of 20ms.
+		-- Parameters values- Is it the currect way? how exactly we will activate the script and sweep?
+		ton=tbm+NPLC_val*0.02 								-- Defines the time the pulse is on including measurement time
+	     -- Define parameters for triggering synchronization	
+		local l_tonwm=tbm-250E-09 			-- Local time on without measurement. I think that this is needed to make sure that timer activation time and current rise time doesn't intterupt the sweep action  
+		
+	    	-- Configure source and measure settings. 
+      smu.sense = smu.SENSE_REMOTE
+	    	smu.source.output = smu.OUTPUT_OFF		-- Ensures output off before configuration 
+	    	smu.source.func = smu.OUTPUT_DCAMPS		-- Chooses DC source
+	    	smu.source.autorangei = smu.AUTORANGE_OFF	-- I'm still not sure whether if I should fix the range or not. I shall check with and without and decide.
+			smua.source.limitv = {V_comp}
+	  	  smu.source.rangei = I_fin  	
+      smu.source.leveli = ilist[1]		 	-- The device prepares to put the ilist[1] current value
+			  smu.measure.autozero = smu.AUTOZERO_OFF		-- I'm not sure if autozero_once is better, see manual
+			smu.measure.filter.enable = smu.FILTER_OFF	-- Disables subsequent measurements averaging
+			smu.measure.nplc=NPLC_val   	    	 	-- Defines measurement integration time (1 NPLC unit is 20ms)
+	     
+	    	-- Setup a buffer to store the result(s) in and start testing. 
+	    -- deleted buffer rows shifted to begininig---
+			 	
+		-- Source-measure configuration
+		smu.trigger.arm.stimulus = 0			-- Skips immediately arm layer (Technical issue, see manual)
+		smu.trigger.source.listi(ilist)			-- Defines the current sweep value list, each source triggering event it chooses the next value in the list. 
+		smu.trigger.source.action = smu.ENABLE 		-- This ensures the measure occurs after the sourcing, and the next sweep step or pulse end cannot begin before measurement complete.	
+	    	smu.trigger.measure.i(smu.nvbuffer1) 		-- Inserts Measurement values into 
+	    	smu.trigger.measure.action = smu.ENABLE		-- Enables measurements, and ensures the measure occurs after the sourcing, and the next sweep step or pulse end cannot begin before measurement complete.
+		smu.trigger.arm.count = 1			-- Activate ar, layer only once (Technical issue, see manual)
+	    	smu.trigger.count = points			-- Configure the sweep count 
+
+		-- Choose between pulsed sweep and staircase sweep
+		if pulsed==1 then
+	    		smu.trigger.endpulse.action = smu.SOURCE_IDLE	-- Choose pulsed sweeps, current is stopped between sweep steps
+		else
+			smu.trigger.endpulse.action = smu.SOURCE_HOLD	-- Choose staircase sweeps, current is holded on between sweep steps
+		end
+
+		-- Configure measurement triggering.  
+	    	trigger.timer[1].reset()						-- This function resets some of the trigger timer settings to their factory defaults.
+	    	trigger.timer[1].delay = l_tonwm					-- Wait "l_tonwm" seconds before measurement activation 
+	    	trigger.timer[1].count = 1						-- Activates only one measurement	
+	    	trigger.timer[1].stimulus = smu.trigger.SOURCE_COMPLETE_EVENT_ID	-- Begins to count "l_tonwm" seconds from current rise complete event 
+	    	smu.trigger.measure.stimulus = trigger.timer[1].EVENT_ID 		-- Defines that the measurement is activated by timer[1]
+ 		
+		-- Configure endpulse triggering
+		trigger.timer[2].reset() 						-- This function resets some of the trigger timer settings to their factory defaults.
+	    	trigger.timer[2].delay = ton						-- Waits "ton" seconds before pulse end (or IDLE state) 
+	    	trigger.timer[2].count = 1						-- Activates only one endpulse event
+	    	trigger.timer[2].stimulus = smu.trigger.SOURCE_COMPLETE_EVENT_ID	-- Begins to count "ton" seconds from current rise complete event	 
+	    	smu.trigger.endpulse.stimulus = trigger.timer[2].EVENT_ID 		-- Defines that the endpulse is activated by timer[2]
+
+		-- configure next step triggering 
+		trigger.timer[3].reset() 						-- This function resets some of the trigger timer settings to their factory defaults.
+	    	trigger.timer[3].delay = toff						-- Waits "toff" seconds before activating next sweep step
+	    	trigger.timer[3].count = 1						-- Activates only one (next) step each time 
+	    	trigger.timer[3].stimulus = smu.trigger.PULSE_COMPLETE_EVENT_ID		-- Begins to count "toff" seconds after end pulse event. 
+	    	smu.trigger.source.stimulus = trigger.timer[3].EVENT_ID			-- Defines that the next pulse event is activated by timer [3]
+
+	    	-- Run the sweep and then turn the output off. 
+	    	smu.source.output = smu.OUTPUT_ON 
+	    	smu.trigger.initiate() 
+	    	delay(toff) 								-- Why is this needed?
+	    	smu.trigger.source.set() 						-- Why is this needed?
+	    	waitcomplete() 
+	    	delay(toff) 								-- Why is this needed?
+	    	smu.source.output = smu.OUTPUT_OFF 
+end
+
+read_points=points*freq_num
+			-- Print buffer results
+			printbuffer(1,read_points,smu.nvbuffer1)
+			printbuffer(1,read_points,smu.nvbuffer1.timestamps)

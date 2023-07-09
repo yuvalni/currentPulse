@@ -5,7 +5,7 @@ from PySide6.QtCore import QTimer,QPropertyAnimation
 import sys
 from time import sleep
 
-from keithley.keithley import MockUp
+from keithley.keithley import MockUp,Keithley2600
 import pyqtgraph as pg
 import numpy as np
 
@@ -43,6 +43,14 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.measureTimer.timeout.connect(self.measure_resistance)
 
         self.inCooldown = False
+        
+        self.SB_NPLC.setValue(0.001)
+        self.SB_pulseMax.setValue(1)
+        self.SB_pulseMin.setValue(0.001)
+        self.SB_tbm.setValue(20E-3)
+        
+        self.SB_measAVG.setValue(5)
+        
 
     def set_constraints(self):
         self.pulseCurrentMax_cons = [0,110/1000]  #constraints in Amps!
@@ -79,13 +87,22 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         
 
     def init_keithley(self):
-        self.keithley = MockUp()
-        self.print_to_status("Keithley connected.")
-        self.KeithleyConnected.setChecked(True)
-        #self.Keithley = keithley
+        #self.keithley = MockUp()
+        self.keithley = Keithley2600()
+        if self.keithley.connect():
+            self.print_to_status("Keithley connected.")
+            self.print_to_status(self.keithley.keithley.query('*IDN?'),timeout=0)
+            self.KeithleyConnected.setChecked(True)
+        
         return True
-
+    
+    def connect_keithley(self):
+        if self.keithley.connect():
+            self.print_to_status("Keithley connected.")
+            self.KeithleyConnected.setChecked(True)
+            self.print_to_status(keithley.keithley.query('*IDN?'))
     def disconnect_keithley(self):
+        self.keithley.disconnect()
         self.print_to_status("keithley disconnected.")
         self.KeithleyConnected.setChecked(False)
         return True
@@ -133,7 +150,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             return False
 
         self.statusbar.showMessage("Applying pulse.",timeout=0)
-        t,I = self.keithley.measure_Pulse(self.pulseMax)
+        t,I = self.keithley.pulse_script(self.pulseMax,self.pulseMin,self.nplc,self.tbm,self.V_comp)
         self.inCooldown = True
 
         self.pulseLine.setData(t,I)
@@ -153,7 +170,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not self.check_measure_constraints():
             self.statusbar.showMessage("Bad measurement Parameter",timeout=0)
             return False
-        Res = self.keithley.measure_Resistance(self.meas_curr)
+        Res = self.keithley.measure_script(self.meas_curr,self.AVGnum)
         self.currents = np.append(self.currents,self.pulseMax)
         self.resistance = np.append(self.resistance,Res)
         
@@ -166,4 +183,4 @@ if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()
     window.show()
-    app.exec_()
+    app.exec()
