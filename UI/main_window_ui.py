@@ -203,7 +203,7 @@ class Ui_MainWindow(object):
 
         self.SB_NPLC = QDoubleSpinBox(self.groupBox)
         self.SB_NPLC.setObjectName(u"SB_NPLC")
-        self.SB_NPLC.setDecimals(4)
+        self.SB_NPLC.setDecimals(5)
         self.SB_NPLC.setMaximum(9999.000000000000000)
 
         self.formLayout.setWidget(5, QFormLayout.FieldRole, self.SB_NPLC)

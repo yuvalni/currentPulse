@@ -1,25 +1,7 @@
-import random
+
 from time import sleep
 import pyvisa
 
-
-class MockUp():
-    def __init__(self):
-        pass
-    
-    def connect(self):
-        return True
-    
-    def disconnect(self):
-        return True
-    
-    def measure_Pulse(self,I):
-        sleep(1000/1000)
-        return ([0.0,0.001,0.0025,0.004],[0.0,I,I,0])
-    
-    def measure_script(self,I,AVGnum):
-       return (25+random.random())
-    
 
 
 class Keithley2600():
@@ -47,7 +29,10 @@ class Keithley2600():
 
     def read(self):
         return self.keithley.read()
-
+    
+    def query(self,str):
+        return self.keithley.query(str)
+    
     def load_script(self,script_name, script_text, num_of_points, script_buffer, delay_time):
         self.script_name = script_name
         self.script_text = script_text

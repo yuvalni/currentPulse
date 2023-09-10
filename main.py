@@ -5,7 +5,8 @@ from PySide6.QtCore import QTimer,QPropertyAnimation
 import sys
 from time import sleep
 
-from keithley.keithley import MockUp,Keithley2600
+#from keithley.keithley import Keithley2600
+from keithley.Mockup import Keithley2600
 import pyqtgraph as pg
 import numpy as np
 
@@ -30,7 +31,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.keithley = None
         self.init_keithley()
-        self.pulseLine = self.currentPlot.plot( pen=pg.mkPen(color='k',width=3))
+        self.pulseLine = self.currentPlot.plot( pen=pg.mkPen(color='k',width=2),labels={'bottom:':"time [ms]",'left': 'current [mA]'})
+    
         self.resistanceLine = self.resistancePlot.plot(pen=None,symbol='o',symbolBrush=0.2)
         
         self.currents = np.empty(0)
@@ -48,6 +50,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.SB_pulseMax.setValue(1)
         self.SB_pulseMin.setValue(0.001)
         self.SB_tbm.setValue(20E-3)
+        self.SB_voltag_comp.setValue(5)
         
         self.SB_measAVG.setValue(5)
         
@@ -91,7 +94,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.keithley = Keithley2600()
         if self.keithley.connect():
             self.print_to_status("Keithley connected.")
-            self.print_to_status(self.keithley.keithley.query('*IDN?'),timeout=0)
+            self.print_to_status(self.keithley.query('*IDN?'),timeout=0)
             self.KeithleyConnected.setChecked(True)
         
         return True
@@ -100,7 +103,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.keithley.connect():
             self.print_to_status("Keithley connected.")
             self.KeithleyConnected.setChecked(True)
-            self.print_to_status(keithley.keithley.query('*IDN?'))
+            self.print_to_status(self.keithley.query('*IDN?'))
     def disconnect_keithley(self):
         self.keithley.disconnect()
         self.print_to_status("keithley disconnected.")
