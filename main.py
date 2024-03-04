@@ -5,8 +5,8 @@ from PySide6.QtCore import QTimer,QPropertyAnimation
 import sys
 from time import sleep
 
-#from keithley.keithley import Keithley2600
-from keithley.Mockup import Keithley2600
+from keithley.keithley import Keithley2600
+#from keithley.Mockup import Keithley2600
 import pyqtgraph as pg
 import numpy as np
 

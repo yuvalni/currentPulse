@@ -6,7 +6,8 @@ import pyvisa
 
 class Keithley2600():
     def __init__(self):
-        self.address = 'USB0::0x05E6::0x2614::4083836::INSTR'
+        #self.address = 'USB0::0x05E6::0x2614::4083836::INSTR'
+        self.address = 'GPIB0::26::INSTR'
         self.keithley = None
         self.connected = False
         
@@ -164,6 +165,7 @@ class Keithley2600():
 
     def measure_script(self,meas_curr,AVGnum):
         self.keithley.clear()
+        
         with open(r".\keithley\measure_script.txt") as f:
             script_txt = f.read()
         script_txt = script_txt.replace("{meas_curr}",str(meas_curr))
@@ -177,7 +179,7 @@ class Keithley2600():
 
     def pulse_script(self,pulseMax,pulseMin,nplc,tbm,V_comp):
         self.keithley.clear()
-        with open(r".\keithley\pulse_script.txt") as f:
+        with open(".\keithley\pulse_script.txt") as f:
         #with open(r".\keithley\pulse_script2.txt") as f:
             script_txt = f.read()
         script_txt = script_txt.replace("{pulseMax}",str(pulseMax))
